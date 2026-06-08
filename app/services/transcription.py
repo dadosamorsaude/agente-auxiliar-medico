@@ -34,6 +34,44 @@ def transcribe_audio(file_path: str) -> str:
         if not transcript or not transcript.strip():
             raise RuntimeError("Whisper retornou transcrição vazia.")
 
+        # Pós-processamento de correção fonética e clínica via LLM
+        try:
+            logger.info("Iniciando pós-processamento de correção fonética com LLM...")
+            correction_prompt = (
+                "Você é um corretor ortográfico e clínico especializado em português do Brasil. "
+                "Sua tarefa é ler uma transcrição de consulta médica (gerada por reconhecimento de voz) e "
+                "corrigir erros fonéticos típicos de transcrição de áudio. "
+                "Exemplos comuns de correção:\n"
+                "- 'pressão vial' -> 'pressão arterial'\n"
+                "- 'render os livros' -> 'reter líquidos'\n"
+                "- 'suor para reidratar' -> 'soro para reidratar'\n"
+                "- 'Velop' -> 'envelope'\n"
+                "- 'Datetrona' -> 'Ondansetrona'\n"
+                "- 'ajudar a aprender' -> 'ajudar a prender'\n"
+                "- 'evite limites' -> 'evite alimentos'\n"
+                "- 'uma testada de dispensa' -> 'um atestado de dispensa'\n"
+                "- 'posto de atendimento' -> 'pronto atendimento'\n\n"
+                "Regras estritas:\n"
+                "1. Não adicione novos fatos clínicos, sintomas, exames, medicamentos ou prescrições que não estejam no áudio original.\n"
+                "2. Mantenha o estilo e tom do discurso original do médico.\n"
+                "3. Retorne APENAS o texto corrigido, sem qualquer introdução, explicação ou notas de rodapé."
+            )
+
+            correction_response = client.chat.completions.create(
+                model=settings.MODEL_AUDIO,
+                messages=[
+                    {"role": "system", "content": correction_prompt},
+                    {"role": "user", "content": f"Texto a corrigir:\n{transcript.strip()}"}
+                ],
+                temperature=0.0
+            )
+            corrected_text = correction_response.choices[0].message.content
+            if corrected_text and corrected_text.strip():
+                logger.info("Transcrição corrigida clinicamente com sucesso pelo LLM.")
+                return corrected_text.strip()
+        except Exception as e:
+            logger.warning(f"Falha ao realizar pós-processamento de correção com LLM: {e}. Retornando transcrição original.")
+
         return transcript.strip()
 
     except FileNotFoundError:

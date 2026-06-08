@@ -69,12 +69,27 @@ from app.core.config import settings
 # Parse de domínios permitidos via variável de ambiente (separados por vírgula)
 allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
 
+# Garante a inclusão dos domínios padrão do Lovable (produção, preview, sandbox, local)
+lovable_origins = [
+    "https://aux-care-chat.lovable.app",
+    "https://id-preview--aa62bec8-ff59-4d10-8fa9-d8f116ab1869.lovable.app",
+    "https://aa62bec8-ff59-4d10-8fa9-d8f116ab1869.lovableproject.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8000"
+]
+
+for origin in lovable_origins:
+    if origin not in allowed_origins:
+        allowed_origins.append(origin)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 AUDIO_ROUTES = {"/audio/upload", "/chat/voice", "/ws/voice"}
