@@ -83,10 +83,16 @@ for origin in lovable_origins:
     if origin not in allowed_origins:
         allowed_origins.append(origin)
 
+# If '*' is specified, we must set allow_credentials to False because FastAPI's CORSMiddleware
+# raises an error if allow_origins=['*'] and allow_credentials=True.
+# Since we authenticate using custom headers (X-API-Key/Authorization) and not browser cookies,
+# it is safe and correct to disable credentials when using '*' to support all preview/local domains.
+allow_all = "*" in allowed_origins or not allowed_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_origins=["*"] if allow_all else allowed_origins,
+    allow_credentials=False if allow_all else True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
